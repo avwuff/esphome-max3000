@@ -16,7 +16,10 @@ PULSE_PIN = "pulse_pin"
 LATCH_PIN = "latch_pin"
 RESET_PIN = "reset_pin"
 
-max3000_ns = cg.esphome_ns.namespace('max3000_spi')
+# Other options
+CONF_DISSOLVE = "dissolve"
+
+max3000_ns = cg.esphome_ns.namespace('max3000')
 MAX3000 = max3000_ns.class_('MAX3000', cg.Component, display.DisplayBuffer)
 
 CONFIG_SCHEMA = cv.All(
@@ -30,6 +33,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(PULSE_PIN): pins.gpio_output_pin_schema,
             cv.Required(LATCH_PIN): pins.gpio_output_pin_schema,
             cv.Required(RESET_PIN): pins.gpio_output_pin_schema,
+            cv.Optional(CONF_DISSOLVE, default=True): cv.boolean,
         }
     )
     .extend(cv.polling_component_schema("1s")),
@@ -41,6 +45,7 @@ async def to_code(config):
     await cg.register_component(var, config)
     await display.register_display(var, config)
 
+    # Apply the pin values to the C++ code
     pin = await cg.gpio_pin_expression(config[CLK_PIN])
     cg.add(var.set_clk_pin(pin))
     pin = await cg.gpio_pin_expression(config[MOSI_PIN])
@@ -55,6 +60,9 @@ async def to_code(config):
     cg.add(var.set_latch_pin(pin))
     pin = await cg.gpio_pin_expression(config[RESET_PIN])
     cg.add(var.set_reset_pin(pin))
+
+    # Other optional settings
+    cg.add(var.set_dissolve(config[CONF_DISSOLVE]))
 
     if CONF_LAMBDA in config:
         lambda_ = await cg.process_lambda(

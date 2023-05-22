@@ -26,8 +26,9 @@
 
 static const char *const TAG = "max3000_base";
 
+
 namespace esphome {
-namespace max3000_spi {
+namespace max3000 {
 
 // Extra delay when bitbanging on ESP32, which updates much faster than AVR
 #if defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_STM32)
@@ -78,10 +79,7 @@ MAX3000_Base::MAX3000_Base(const MAX3000_Config & config_)
 }
 
 MAX3000_Base::~MAX3000_Base(void) {
-    if(shuffledIndex) {
-        delete[] shuffledIndex;
-        shuffledIndex = NULL;
-    }
+
 }
 
 inline void
@@ -103,16 +101,6 @@ MAX3000_Base::shiftRegWrite() {
     MAX3000_UNLATCH
 }
 
-void delayYield(int n) {
-  int c = 0;
-  while (c < n) {
-    delay(100);
-    //yield();
-    vTaskDelay(0);
-    c += 100;
-  }
-}
-
 bool MAX3000_Base::begin(bool reset, bool periphBegin) {
     memset(&buffer, 0, BUFFER_SIZE);
     memset(&oldBuffer, 0, BUFFER_SIZE);
@@ -120,12 +108,11 @@ bool MAX3000_Base::begin(bool reset, bool periphBegin) {
     //ESP_LOGCONFIG(TAG, "[BEGIN] Shuffle");
     // Create initial index buffer, which will get shuffled on the first load.
     // Each panel received the same shuffled index for space concerns.
-    /*if((!shuffledIndex) && !(shuffledIndex = new int[PANEL_HEIGHT * PANEL_WIDTH])) {
-        return false;
-    }
     for(int i = 0; i < PANEL_HEIGHT * PANEL_WIDTH; i++) {
         shuffledIndex[i] = i;
-    }*/
+    }
+    shuffleIndex();
+
     memset(&shiftReg, 0, config.numVBoards * config.numHBoards * sizeof(uint16_t));
 
     // Initialize SPI (either hardware or software)
@@ -202,7 +189,7 @@ bool MAX3000_Base::getPixel(int16_t x, int16_t y) {
                 y = config.height - y - 1;
                 break;
         }
-        return (buffer[x + (y / 8) * config.width] & (1 << (y & 7)));
+        return buffer[x + (y / 8) * config.width] & (1 << (y & 7));
     }
     return false;    // Pixel out of bounds
 }
@@ -213,12 +200,6 @@ void MAX3000_Base::setUserLED(size_t board, bool state) {
 }
 
 void MAX3000_Base::display(bool force) {
-    if(dissolveEnabled) {
-        // When dissolve mode is enabled, we want to update in a random order.
-        // To maintain the random appearance, we'll shuffle on each update.
-        shuffleIndex();
-    }
-
     int numChanged = 0;
 
     for(int i = 0; i < PANEL_HEIGHT * PANEL_WIDTH; ++i) {
@@ -229,8 +210,7 @@ void MAX3000_Base::display(bool force) {
 #endif
 
         // If dissolving, pick the shuffled index
-        //int index = (dissolveEnabled) ? shuffledIndex[i] : i;
-        int index = i;
+        int index = (dissolveEnabled) ? shuffledIndex[i] : i;
 
         size_t col = (index / PANEL_HEIGHT);
         size_t row = (index % PANEL_HEIGHT);
@@ -420,12 +400,12 @@ void MAX3000_Base::clearPixel() {
 
 void MAX3000_Base::shuffleIndex() {
     for(int i = 0; i < (int)(PANEL_HEIGHT * PANEL_WIDTH); i++) {
-        int n            = random() * (PANEL_HEIGHT * PANEL_WIDTH);
+        int n            = rand() % (PANEL_HEIGHT * PANEL_WIDTH);
         int temp         = shuffledIndex[n];
         shuffledIndex[n] = shuffledIndex[i];
         shuffledIndex[i] = temp;
     }
 }
 
-}  // namespace max3000_spi
+}  // namespace max3000
 }  // namespace esphome

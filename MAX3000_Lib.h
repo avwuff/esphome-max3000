@@ -3,7 +3,8 @@
 #include "esphome/core/helpers.h"
 
 namespace esphome {
-namespace max3000_spi {
+namespace max3000 {
+
 
 /**
  * @file MAX3000_Lib.h
@@ -354,7 +355,7 @@ class MAX3000_Base {
     bool firstUpdate;
 
     /** @brief Array of length PIXEL_HEIGHT * PIXEL_WIDTH that maps indexes to a random number */
-    int * shuffledIndex;
+    int shuffledIndex[PANEL_HEIGHT * PANEL_WIDTH];
 
     /** @brief Array with length of number of boards, storing the 16-bit shift register contents to send */
     uint16_t shiftReg[2]; // numVBoards * numHBoards
@@ -418,5 +419,5 @@ class MAX3000_Display : public MAX3000_Base {
 
 #endif    // _MAX3000_Lib_H_
 
-}  // namespace max3000_spi
+}  // namespace max3000
 }  // namespace esphome
