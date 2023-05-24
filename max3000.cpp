@@ -58,7 +58,7 @@ void MAX3000::update() {
       // TODO: Use a faster way of doing this
       for (int x = 0; x < DISPLAY_WIDTH; x++) {
           for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-              before[x][y] = this-fDots->getPixel(x, y);
+              before[x][y] = this->fDots->getPixel(x, y);
           }
       }
     }
@@ -71,12 +71,11 @@ void MAX3000::update() {
         // Copy the after into a buffer
         for (int x = 0; x < DISPLAY_WIDTH; x++) {
             for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-                after[x][y] = this-fDots->getPixel(x, y);
+                after[x][y] = this->fDots->getPixel(x, y);
             }
         }
 
         doTransition(nextTransition);
-
         nextTransition = 0;
     }
 
@@ -98,12 +97,14 @@ void MAX3000::doTransition(int transition) {
     }
 
     switch (transition) {
-      case 1: // Transition 1: A simple horizontal wipe.
+      case 1: // Transition 1: A simple horizontal wipe from left to right
         for (int x = 0; x < DISPLAY_WIDTH; x++) {
 
           // Draw the line top to bottom
           for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-            this->fDots->drawPixel(x, y, true);
+            // double thickness to make it more obvious
+            this->fDots->drawPixel(x, y, MAX3000_LIGHT);
+            this->fDots->drawPixel(x+1, y, MAX3000_LIGHT);
 
             // Draw the 'after' in the row behind the line
             if (x > 0) {
@@ -113,7 +114,28 @@ void MAX3000::doTransition(int transition) {
 
           // Draw it as fast as possible.
           this->fDots->display();
-          delay(15);
+          delay(5);
+        }
+
+        break;
+      case 2: // Transition 2: A diagonal swipe.
+        for (int x = 0; x < DISPLAY_WIDTH + DISPLAY_HEIGHT; x++) {
+
+          // Draw the line top to bottom
+          for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+            // double thickness to make it more obvious
+            this->fDots->drawPixel(x - y, y, MAX3000_LIGHT);
+            this->fDots->drawPixel(x - y + 1, y, MAX3000_LIGHT);
+
+            // Draw the 'after' in the row behind the line
+            if (x - y - 1 >= 0 && x - y - 1 < DISPLAY_WIDTH) {
+              this->fDots->drawPixel(x - y - 1, y, after[x-y-1][y] ? MAX3000_LIGHT : MAX3000_DARK);
+            }
+          }
+
+          // Draw it as fast as possible.
+          this->fDots->display();
+          delay(5);
         }
 
         break;
