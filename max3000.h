@@ -5,15 +5,13 @@
 #include "esphome/components/display/display_buffer.h"
 #include "MAX3000_Lib.h"
 
-// TEMPORARY - FIGURE OUT HOW TO MAKE THESE DYNAMIC
-#define DISPLAY_HEIGHT 16
-#define DISPLAY_WIDTH 28
-
 namespace esphome {
 namespace max3000 {
 
 class MAX3000 : public PollingComponent, public display::DisplayBuffer {
  public:
+  MAX3000(int displaysWide, int displaysHigh);
+
   void setup() override;
   void dump_config() override;
 
@@ -68,9 +66,20 @@ class MAX3000 : public PollingComponent, public display::DisplayBuffer {
 
   // Transition system
   int nextTransition;
-  bool before[DISPLAY_WIDTH][DISPLAY_HEIGHT];
-  bool after[DISPLAY_WIDTH][DISPLAY_HEIGHT];
+  uint8_t *before;
+  uint8_t *after;
   void doTransition(int transition);
+  bool getPixel(uint8_t *buffer, int16_t x, int16_t y);
+
+  // How many displays are in this configuration? 1 wide by 2 high? Or 2 wide by 1 high?
+  int displaysWide_;
+  int displaysHigh_;
+
+  // ACTUAL width and height in pixels
+  int dWidth;
+  int dHeight;
+
+
 
 };
 

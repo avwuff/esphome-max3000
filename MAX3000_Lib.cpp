@@ -32,7 +32,7 @@ namespace max3000 {
 
 // Extra delay when bitbanging on ESP32, which updates much faster than AVR
 #if defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_STM32)
-#define BITBANG_DELAY delayMicroseconds(5);
+#define BITBANG_DELAY delayMicroseconds(3);
 #else
 #define BITBANG_DELAY
 #endif
@@ -75,7 +75,7 @@ MAX3000_Base::MAX3000_Base(const MAX3000_Config & config_)
     firstUpdate     = true;
 
     // 250uS has been determined to be a decent compromise between frame rate and flip reliability
-    pulseDuration = 250;
+    pulseDuration = 150;
 }
 
 MAX3000_Base::~MAX3000_Base(void) {
@@ -102,8 +102,18 @@ MAX3000_Base::shiftRegWrite() {
 }
 
 bool MAX3000_Base::begin(bool reset, bool periphBegin) {
-    memset(&buffer, 0, BUFFER_SIZE);
-    memset(&oldBuffer, 0, BUFFER_SIZE);
+    char copy[100];
+    sprintf(copy, "[BEGIN] shifreg: %d", int(config.numVBoards * config.numHBoards));
+    ESP_LOGCONFIG(TAG, copy);
+
+    // Set up the memory
+    buffer = new uint8_t[BUFFER_SIZE];
+    oldBuffer = new uint8_t[BUFFER_SIZE];
+    shiftReg = new uint16_t[config.numVBoards * config.numHBoards];
+
+
+    memset(buffer, 0, BUFFER_SIZE);
+    memset(oldBuffer, 0, BUFFER_SIZE);
 
     //ESP_LOGCONFIG(TAG, "[BEGIN] Shuffle");
     // Create initial index buffer, which will get shuffled on the first load.
@@ -113,7 +123,7 @@ bool MAX3000_Base::begin(bool reset, bool periphBegin) {
     }
     shuffleIndex();
 
-    memset(&shiftReg, 0, config.numVBoards * config.numHBoards * sizeof(uint16_t));
+    memset(shiftReg, 0, config.numVBoards * config.numHBoards * sizeof(uint16_t));
 
     // Initialize SPI (either hardware or software)
     config.sclk_pin->digital_write(0);
@@ -169,7 +179,7 @@ void MAX3000_Base::drawPixel(int16_t x, int16_t y, uint16_t color) {
 }
 
 void MAX3000_Base::clearDisplay(void) {
-    memset(&buffer, 0, BUFFER_SIZE);
+    memset(buffer, 0, BUFFER_SIZE);
 }
 
 bool MAX3000_Base::getPixel(int16_t x, int16_t y) {
@@ -279,7 +289,7 @@ void MAX3000_Base::display(bool force) {
     }
 
     // Store current buffer to avoid unnecessary changes on next update.
-    memcpy(&oldBuffer, &buffer, BUFFER_SIZE);
+    memcpy(oldBuffer, buffer, BUFFER_SIZE);
     firstUpdate = false;
 
     if(constantRate) {
@@ -293,6 +303,14 @@ void MAX3000_Base::display(bool force) {
             delayMicroseconds(5);
         }
     }
+}
+
+void MAX3000_Base::copyBuffer(uint8_t *toBuffer) {
+  memcpy(toBuffer, buffer, BUFFER_SIZE);
+}
+
+void MAX3000_Base::replaceBuffer(uint8_t *fromBuffer) {
+  memcpy(buffer, fromBuffer, BUFFER_SIZE);
 }
 
 void MAX3000_Base::invertDisplay(bool i) {

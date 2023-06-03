@@ -45,8 +45,7 @@ namespace max3000 {
 #define PANEL_WIDTH 28     // Fixed number of columns in each MAX3000 panel
 #define PANEL_HEIGHT 16    // Fixed number of rows in each MAX3000 panel
 
-//#define BUFFER_SIZE config.width *((config.height + 7) / 8)
-#define BUFFER_SIZE 28 * ((16 + 7) / 8)
+#define BUFFER_SIZE config.width *((config.height + 7) / 8)
 
 /**
  * @brief Configuration object for the MAX3000 library
@@ -61,8 +60,6 @@ class MAX3000_Config {
      * @param width_ If specified, sets the total width of the entire display in pixels.
      * @param height_ If specified, sets the total height of the entire display in pixels.
      */
-    void empty(bool state) { return; };
-
     MAX3000_Config(uint8_t width_ = 0, uint8_t height_ = 0)
         : width(((width_ + (PANEL_WIDTH - 1)) / PANEL_WIDTH) * PANEL_WIDTH),
           height(((height_ + (PANEL_HEIGHT - 1)) / PANEL_HEIGHT) * PANEL_HEIGHT),
@@ -76,7 +73,6 @@ class MAX3000_Config {
           row_pin(NULL) {
         numHBoards = width / PANEL_WIDTH;
         numVBoards = height / PANEL_HEIGHT;
-
     }
 
   public:
@@ -118,16 +114,6 @@ class MAX3000_Config {
     GPIOPin *col_pin{nullptr};          // Pin connected to COL_ENABLE_N
     GPIOPin *row_pin{nullptr};          // Pin connected to ROW_ENABLE_N
 
-/*
-    void (*mosi_pin)(bool);         // Pin connected to MTX_DIN
-    void (*sclk_pin)(bool);         // Pin connected to MTX_CLK
-    void (*lat_pin)(bool);          // Pin connected to MTX_LAT
-    void (*rst_pin)(bool);          // Pin connected to MTX_RST
-    void (*pulse_pin)(bool);        // Pin connected to PULSE_ENABLE
-    void (*col_pin)(bool);          // Pin connected to COL_ENABLE_N
-    void (*row_pin)(bool);          // Pin connected to ROW_ENABLE_N
-*/
-
     // Computed in constructor:
     size_t numHBoards;    // Number of horizontal boards in the total display matrix
     size_t numVBoards;    // Number of vertical boards in the total display matrix
@@ -139,7 +125,7 @@ class MAX3000_Config {
 class MAX3000_Base {
   public:
     /**
-     * @brief Virtual Destuctor
+     * @brief Virtual Destructor
      */
     virtual ~MAX3000_Base(void);
 
@@ -271,6 +257,12 @@ class MAX3000_Base {
      */
     void setConstantFrameRate(bool param);
 
+    // Make a copy of the buffer
+    void copyBuffer(uint8_t *toBuffer);
+
+    // Replace the buffer
+    void replaceBuffer(uint8_t *fromBuffer);
+
   protected:
     /**
      * @brief Constructs a new MAX3000_Base object.
@@ -325,10 +317,10 @@ class MAX3000_Base {
     MAX3000_Config config;
 
     /** @brief Internal pixel memory buffer */
-    uint8_t buffer[BUFFER_SIZE];
+    uint8_t *buffer;
 
     /** @brief The previous pixel memory buffer from the last display() call. */
-    uint8_t oldBuffer[BUFFER_SIZE];
+    uint8_t *oldBuffer;
 
     /** @brief Display width as modified by current rotation */
     int16_t localWidth;
@@ -358,7 +350,7 @@ class MAX3000_Base {
     int shuffledIndex[PANEL_HEIGHT * PANEL_WIDTH];
 
     /** @brief Array with length of number of boards, storing the 16-bit shift register contents to send */
-    uint16_t shiftReg[2]; // numVBoards * numHBoards
+    uint16_t *shiftReg; // numVBoards * numHBoards
 };
 
 /**
@@ -382,7 +374,7 @@ class MAX3000_Display : public MAX3000_Base {
     }
 
     /**
-     * @brief Virtual Destuctor
+     * @brief Virtual Destructor
      */
     virtual ~MAX3000_Display(void) {}
 

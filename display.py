@@ -16,6 +16,9 @@ PULSE_PIN = "pulse_pin"
 LATCH_PIN = "latch_pin"
 RESET_PIN = "reset_pin"
 
+CONF_WIDE = "num_width"
+CONF_HIGH = "num_height"
+
 # Other options
 CONF_DISSOLVE = "dissolve"
 
@@ -33,6 +36,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(PULSE_PIN): pins.gpio_output_pin_schema,
             cv.Required(LATCH_PIN): pins.gpio_output_pin_schema,
             cv.Required(RESET_PIN): pins.gpio_output_pin_schema,
+            cv.Required(CONF_WIDE): cv.int_,
+            cv.Required(CONF_HIGH): cv.int_,
             cv.Optional(CONF_DISSOLVE, default=True): cv.boolean,
         }
     ).extend(cv.polling_component_schema("1s")),
@@ -40,7 +45,7 @@ CONFIG_SCHEMA = cv.All(
 )
 
 async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
+    var = cg.new_Pvariable(config[CONF_ID], config[CONF_WIDE], config[CONF_HIGH])
     await cg.register_component(var, config)
     await display.register_display(var, config)
 
