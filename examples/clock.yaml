@@ -1,0 +1,102 @@
+# This example renders a simple 12-hour clock on the MAX3000 display.
+# The font can be controlled by the `font` section.
+
+esphome:
+  name: flipdot
+  friendly_name: Flipdot
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "your-key-here"
+
+ota:
+  password: "ota-pass-here"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Flipdot Fallback Hotspot"
+    password: "fallback-pass"
+
+captive_portal:
+
+# The green LED backlight will show up as a Light entity in Home Assistant
+light:
+  - platform: monochromatic
+    name: "Backlight"
+    output: gpio_22
+    restore_mode: RESTORE_DEFAULT_ON
+
+output:
+  - platform: ledc
+    pin: GPIO22
+    id: gpio_22
+
+font:
+  # gfonts://family[@weight]
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: bold
+    id: roboto
+    size: 15
+    glyphs: |-
+      !"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz?
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+display:
+  - platform: max3000
+    id: maxsign
+    clk_pin: GPIO18 # Listed as SCK
+    mosi_pin: GPIO23
+    col_pin: GPIO26
+    row_pin: GPIO27
+    pulse_pin: GPIO33
+    reset_pin: GPIO17
+    latch_pin: GPIO16
+    update_interval: 25ms
+    dissolve: false
+    num_width: 1 # one display wide
+    num_height: 1 # one display high
+
+    pages:
+      - id: pagetime
+        lambda: |-
+
+          // retrieve the current time. note that on powerup the time will be wrong until the Home Assistant connection is established.
+          // if you want to use this standalone, use the NTP time source.
+          auto time = id(esptime).now();
+          
+          // Convert to a 12-hour time
+          auto hour = time.hour % 12;
+          if (hour == 0) hour = 12;
+          char min[2];
+          if (time.minute < 10) {
+            sprintf(min, "0%d", time.minute);
+          } else {
+            sprintf(min, "%d", time.minute);
+          }
+
+          // Print time in HH:MM format
+          it.printf(14, 10, id(roboto), TextAlign::CENTER, "%d:%s", hour, min);
+
+          // draw the nice frame around the outside
+          it.line(1, 0, 26, 0); // top
+          it.line(0, 1, 0, 14); // left
+          it.line(1, 15, 26, 15); // bottom
+          it.line(27, 1, 27, 14); // right

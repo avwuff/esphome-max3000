@@ -1,0 +1,175 @@
+# This example will scroll text across the display.  When the scroll is complete,
+# it will go back to a clock display.
+# The text is read from an entity in Home Assistant, that you must create
+# Under Devices -> Helpers, create a new Text Helper and call it flipdot_text_scroll.
+
+esphome:
+  name: flipdot
+  friendly_name: Flipdot
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "your-key-here"
+
+ota:
+  password: "ota-pass-here"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Flipdot Fallback Hotspot"
+    password: "fallback-pass"
+
+captive_portal:
+
+
+# SCOLLING TEXT COMPONENT
+# Input text for text scrolling
+text_sensor:
+  - platform: homeassistant
+    id: textscroll
+    entity_id: input_text.flipdot_text_scroll
+    internal: true
+
+# Global variables to remember the size of the text
+globals:
+  - id: textwidth
+    type: int
+    initial_value: '0'
+  - id: textpos
+    type: int
+    initial_value: '0'
+
+# END SCROLLING TEXT
+
+# The green LED backlight will show up as a Light entity in Home Assistant
+light:
+  - platform: monochromatic
+    name: "Backlight"
+    output: gpio_22
+    restore_mode: RESTORE_DEFAULT_ON
+
+output:
+  - platform: ledc
+    pin: GPIO22
+    id: gpio_22
+
+font:
+  # gfonts://family[@weight]
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: bold
+    id: roboto
+    size: 15
+    glyphs: |-
+      !"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz?
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+# This creates a select entity in Home Assistant that allows you to choose when the text should start scrolling.
+# First set the text, then change the page to Scroll Text.
+# When the scroll is complete, the page will change back to Time.
+select:
+  - platform: template
+    name: Page
+    id: selectpage
+    options:
+      - "Time"
+      - "Scroll Text"
+    initial_option: "Time"
+    optimistic: true # update the reported state immediately
+    set_action:
+      - display.page.show: !lambda |-
+          if (x == "Scroll Text") {
+            return id(pagescroll);
+          } else {
+            return id(pagetime);
+          }
+      - lambda: |-
+          id(maxsign).update();
+
+display:
+  - platform: max3000
+    id: maxsign
+    clk_pin: GPIO18 # Listed as SCK
+    mosi_pin: GPIO23
+    col_pin: GPIO26
+    row_pin: GPIO27
+    pulse_pin: GPIO33
+    reset_pin: GPIO17
+    latch_pin: GPIO16
+    update_interval: 25ms
+    dissolve: false
+    num_width: 1 # one display wide
+    num_height: 1 # one display high
+
+    on_page_change:
+      - then:
+          lambda: |-
+            // Perform a wipe animation into the next page.
+            id(maxsign).transitionOnNextUpdate(2);
+      - to: pagescroll
+        then:
+          lambda: |-
+            // Measure the size of the text
+            int calculated_width;
+            int calculated_height;
+            int calculated_x;
+            int calculated_y;
+
+            //calculate the width of the text, the x and y are not important
+            id(maxsign).get_text_bounds(0, 0, id(textscroll).state.c_str(), id(roboto), TextAlign::TOP_LEFT, &calculated_x, &calculated_y, &calculated_width, &calculated_height);
+
+            // Reset the values to start the text scroll
+            id(textwidth) = calculated_width;
+            id(textpos) = 28; // TODO: Needs to tbe the width of the displays
+
+    pages:
+      - id: pagetime
+        lambda: |-
+
+          auto time = id(esptime).now();
+          auto hour = time.hour % 12;
+          if (hour == 0) hour = 12;
+          char min[2];
+          if (time.minute < 10) {
+            sprintf(min, "0%d", time.minute);
+          } else {
+            sprintf(min, "%d", time.minute);
+          }
+
+          // Print time in HH:MM format
+          it.printf(14, 10, id(roboto), TextAlign::CENTER, "%d:%s", hour, min);
+
+
+      - id: pagescroll
+        lambda: |-
+          // Scroll text across the display
+          it.printf(id(textpos), 0, id(roboto), "%s", id(textscroll).state.c_str());
+
+          // Decrement the scrolling
+          id(textpos) = id(textpos) - 1;
+          if (id(textpos) < -id(textwidth)) { 
+            // Reached the end? Go back to the clock.
+            auto call = id(selectpage).make_call();
+            call.set_option("Time");
+            call.perform();
+          }
+
+      
+

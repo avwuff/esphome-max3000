@@ -1,0 +1,78 @@
+# This example plays an animated GIF onto the sign.
+# Make sure to copy the GIF file you want to play into the ESPHome folder.
+# DO NOT play these GIFs for very long -- it will cause the coils on the MAX3000 to heat up and possibly damage the board.
+
+esphome:
+  name: flipdot
+  friendly_name: Flipdot
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "your-key-here"
+
+ota:
+  password: "ota-pass-here"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Flipdot Fallback Hotspot"
+    password: "fallback-pass"
+
+captive_portal:
+
+# The green LED backlight will show up as a Light entity in Home Assistant
+light:
+  - platform: monochromatic
+    name: "Backlight"
+    output: gpio_22
+    restore_mode: RESTORE_DEFAULT_ON
+
+output:
+  - platform: ledc
+    pin: GPIO22
+    id: gpio_22
+
+animation:
+  - file: "animation.gif"
+    id: tunnel
+    resize: 28x28
+
+display:
+  - platform: max3000
+    id: maxsign
+    clk_pin: GPIO18 # Listed as SCK
+    mosi_pin: GPIO23
+    col_pin: GPIO26
+    row_pin: GPIO27
+    pulse_pin: GPIO33
+    reset_pin: GPIO17
+    latch_pin: GPIO16
+    update_interval: 25ms
+    dissolve: false
+    num_width: 1 # one display wide
+    num_height: 1 # one display high
+
+    pages:
+      - id: pagegif
+        lambda: |-
+          int frames = id(tunnel).get_animation_frame_count() - 2;
+          int goframe = ((id(tunnel).get_current_frame() + 1) % frames);
+          id(tunnel).set_frame(goframe);
+          
+          // Draw the animation at position [x=0,y=0]
+          it.image(0, -8, id(tunnel), COLOR_ON, COLOR_OFF);
+      
+
