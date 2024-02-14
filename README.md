@@ -5,6 +5,8 @@ Based heavily on the FlippyDriver code here: https://github.com/NietoSkunk/Flipp
 
 # Introduction
 
+![](examples/demo.mp4)
+
 The [Luminator MAX3000](https://github.com/NietoSkunk/FlippyDriver) is an awesome flipdot display created by Canadian 
 company F-P Electronics in the late 90s.  Before LED displays were commonplace, the flipdot display reigned supreme,
 as an easy-to-read and versatile display technology.
