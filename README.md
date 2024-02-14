@@ -4,8 +4,7 @@ Provides support for driving a MAX3000 flipdot board with ESPHome.
 Based heavily on the FlippyDriver code here: https://github.com/NietoSkunk/FlippyControl
 
 # Introduction
-
-![](examples/demo.mp4)
+https://github.com/avwuff/esphome-max3000/assets/2856227/19748514-65e6-469e-8096-59432acd6095
 
 The [Luminator MAX3000](https://github.com/NietoSkunk/FlippyDriver) is an awesome flipdot display created by Canadian 
 company F-P Electronics in the late 90s.  Before LED displays were commonplace, the flipdot display reigned supreme,
